@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -20,3 +20,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def run_light_migrations():
+    ddl = """
+    ALTER TABLE chat_messages
+        ADD COLUMN IF NOT EXISTS sentiment_label VARCHAR(20),
+        ADD COLUMN IF NOT EXISTS sentiment_score DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS tone VARCHAR(20);
+    """
+    with engine.begin() as conn:
+        conn.execute(text(ddl))

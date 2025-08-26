@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import ChatMessage
 from app.core.redis import get_redis
+from app.services.sentiments import analyze  # <-- NEW
 import json
 
 router = APIRouter()
@@ -24,7 +25,6 @@ def get_history(session_id: str, db: Session = Depends(get_db)):
         if cached:
             return json.loads(cached)
     except Exception:
-        # If Redis is down, just fall back to DB
         pass
 
     # Fallback: DB
@@ -39,7 +39,11 @@ def get_history(session_id: str, db: Session = Depends(get_db)):
         {
             "role": m.role,
             "content": m.content,
-            "created_at": m.created_at.isoformat()
+            "created_at": m.created_at.isoformat(),
+            # include sentiments if present
+            "sentiment_label": m.sentiment_label,
+            "sentiment_score": m.sentiment_score,
+            "tone": m.tone,
         }
         for m in messages
     ]
@@ -60,10 +64,23 @@ def send_message(payload: dict, db: Session = Depends(get_db)):
         if field not in payload:
             raise HTTPException(status_code=400, detail=f"Missing field: {field}")
 
+    # Run sentiment only for user messages
+    s_label = None
+    s_score = None
+    s_tone = None
+    if payload["role"] == "user":
+        sa = analyze(payload["content"])  # {'label','score','tone'}
+        s_label = sa["label"]
+        s_score = sa["score"]
+        s_tone  = sa["tone"]
+
     msg = ChatMessage(
         session_id=payload["session_id"],
         role=payload["role"],
         content=payload["content"],
+        sentiment_label=s_label,
+        sentiment_score=s_score,
+        tone=s_tone,
     )
     db.add(msg)
     db.commit()
@@ -76,7 +93,13 @@ def send_message(payload: dict, db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    return {"status": "ok", "message_id": msg.id}
+    return {
+        "status": "ok",
+        "message_id": msg.id,
+        "sentiment_label": s_label,
+        "sentiment_score": s_score,
+        "tone": s_tone,
+    }
 
 
 @router.post("/clear/{session_id}")

@@ -1,8 +1,11 @@
 from fastapi import FastAPI
-from app.database import engine, Base
+from app.database import engine, Base, run_light_migrations
 from app.routes import chat
 
 # Create database tables
+# Create tables & migrate
+
+run_light_migrations()  # <-- add
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Chatbot Backend with PostgreSQL")
