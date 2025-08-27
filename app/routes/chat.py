@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import ChatMessage
 from app.core.redis import get_redis
-from app.services.sentiments import analyze  # <-- NEW
+from app.services.sentiments import analyze
+from app.services.pdf_loader import load_and_index_pdfs as load_pdfs
 import json
 
 router = APIRouter()
@@ -14,12 +15,12 @@ CACHE_TTL_SECONDS = 60 * 5  # 5 minutes
 def _cache_key(session_id: str) -> str:
     return f"chat_history:{session_id}"
 
+
 @router.get("/history/{session_id}")
 def get_history(session_id: str, db: Session = Depends(get_db)):
     r = get_redis()
     key = _cache_key(session_id)
 
-    # Try Redis first
     try:
         cached = r.get(key)
         if cached:
@@ -27,7 +28,6 @@ def get_history(session_id: str, db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    # Fallback: DB
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)
@@ -40,7 +40,6 @@ def get_history(session_id: str, db: Session = Depends(get_db)):
             "role": m.role,
             "content": m.content,
             "created_at": m.created_at.isoformat(),
-            # include sentiments if present
             "sentiment_label": m.sentiment_label,
             "sentiment_score": m.sentiment_score,
             "tone": m.tone,
@@ -48,7 +47,6 @@ def get_history(session_id: str, db: Session = Depends(get_db)):
         for m in messages
     ]
 
-    # Save in Redis
     try:
         r.setex(key, CACHE_TTL_SECONDS, json.dumps(result))
     except Exception:
@@ -59,17 +57,15 @@ def get_history(session_id: str, db: Session = Depends(get_db)):
 
 @router.post("/send")
 def send_message(payload: dict, db: Session = Depends(get_db)):
-    # Basic validation
     for field in ("session_id", "role", "content"):
         if field not in payload:
             raise HTTPException(status_code=400, detail=f"Missing field: {field}")
 
-    # Run sentiment only for user messages
     s_label = None
     s_score = None
     s_tone = None
     if payload["role"] == "user":
-        sa = analyze(payload["content"])  # {'label','score','tone'}
+        sa = analyze(payload["content"])
         s_label = sa["label"]
         s_score = sa["score"]
         s_tone  = sa["tone"]
@@ -86,7 +82,6 @@ def send_message(payload: dict, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(msg)
 
-    # Invalidate cache for this session
     try:
         r = get_redis()
         r.delete(_cache_key(payload["session_id"]))
@@ -107,7 +102,6 @@ def clear_history(session_id: str, db: Session = Depends(get_db)):
     db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
     db.commit()
 
-    # Clear Redis cache too
     try:
         r = get_redis()
         r.delete(_cache_key(session_id))
@@ -119,10 +113,21 @@ def clear_history(session_id: str, db: Session = Depends(get_db)):
 
 @router.get("/cache/ping")
 def cache_ping():
-    """Quick health check to see if Redis is reachable."""
     try:
         r = get_redis()
         ok = r.ping()
         return {"redis": "ok" if ok else "unreachable"}
     except Exception as e:
         return {"redis": f"error: {e.__class__.__name__}"}
+
+
+# -------------------------------
+# 🔹 NEW: Reload PDFs endpoint
+# -------------------------------
+@router.post("/reload/pdfs")
+def reload_pdfs():
+    try:
+        docs = load_pdfs()  # Load all PDFs from knowledge/
+        return {"status": "ok", "files_loaded": len(docs)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF reload failed: {str(e)}")
