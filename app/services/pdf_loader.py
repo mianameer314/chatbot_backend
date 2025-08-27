@@ -1,9 +1,8 @@
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings  # or HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
 import os
 
 def load_and_index_pdfs(pdf_folder="knowledge/"):
@@ -23,8 +22,8 @@ def load_and_index_pdfs(pdf_folder="knowledge/"):
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = splitter.split_documents(docs)
 
-    # 2. Create embeddings
-    embeddings = OpenAIEmbeddings()  # requires OPENAI_API_KEY in env
+    # 2. Create embeddings (Gemini instead of OpenAI)
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
     # 3. Store in FAISS
     vectorstore = FAISS.from_documents(chunks, embeddings)
@@ -32,8 +31,8 @@ def load_and_index_pdfs(pdf_folder="knowledge/"):
     # 4. Create retriever
     retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 4})
 
-    # 5. Build RetrievalQA chain
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    # 5. Build RetrievalQA chain (Gemini LLM)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
