@@ -1,9 +1,47 @@
-fastapi==0.116.1
-uvicorn==0.35.0
-sqlalchemy==2.0.43
-psycopg2-binary==2.9.10
-pydantic==2.11.7
-python-dotenv==1.1.1
-transformers==4.35.2
-tokenizers==0.14.1
-nltk==3.9.1
+
+# --- UI & API ---
+streamlit
+fastapi
+uvicorn
+redis
+
+# --- Core LLM Providers ---
+openai                # upgraded (needed for langchain-openai)
+google-generativeai     # brings correct google-ai-generativelanguage dep
+google-ai-generativelanguage
+
+# --- LangChain + RAG ---
+langchain
+langchain-community
+langchain-huggingface
+langchain-openai
+langchain-google-genai
+faiss-cpu
+sentence-transformers
+
+# --- Hugging Face stack (must be in sync) ---
+transformers
+tokenizers
+huggingface-hub
+sentencepiece
+
+# --- Database ---
+sqlalchemy
+psycopg2-binary
+
+# --- Utilities ---
+textblob
+nltk
+python-dotenv
+pydantic
+pydantic-settings
+
+# --- Torch (match audio/vision stack) ---
+torch
+torchvision
+torchaudio
+
+# --- Parsing / Web ---
+pypdf
+beautifulsoup4
+html2text
