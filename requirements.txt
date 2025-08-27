@@ -8,3 +8,10 @@ transformers==4.35.2
 tokenizers==0.14.1
 nltk==3.9.1
 redis
+langchain
+langchain-community
+langchain-huggingface
+langchain-openai
+langchain-google-genai
+faiss-cpu
+sentence-transformers
