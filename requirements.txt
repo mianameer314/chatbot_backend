@@ -4,8 +4,6 @@ sqlalchemy
 psycopg2-binary
 pydantic
 python-dotenv
-transformers
-tokenizers
 nltk
 redis
 langchain
@@ -13,5 +11,3 @@ langchain-community
 langchain-huggingface
 langchain-openai
 langchain-google-genai
-faiss-cpu
-sentence-transformers
