@@ -4,6 +4,7 @@ sqlalchemy
 psycopg2-binary
 pydantic
 python-dotenv
+python-multipart
 nltk
 redis
 langchain
