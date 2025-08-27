@@ -7,6 +7,8 @@ from app.core.redis import get_redis
 from app.services.sentiments import analyze
 from app.services.pdf_loader import load_and_index_pdfs as load_pdfs
 import json
+import os
+from fastapi import UploadFile, File
 
 router = APIRouter()
 
@@ -119,6 +121,19 @@ def cache_ping():
         return {"redis": "ok" if ok else "unreachable"}
     except Exception as e:
         return {"redis": f"error: {e.__class__.__name__}"}
+
+UPLOAD_DIR = "knowledge"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@router.post("/upload_pdf")
+def upload_pdf(file: UploadFile = File(...)):
+    try:
+        save_path = os.path.join(UPLOAD_DIR, file.filename)
+        with open(save_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        return {"status": "ok", "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF upload failed: {str(e)}")
 
 
 # -------------------------------
