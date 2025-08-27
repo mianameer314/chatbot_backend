@@ -9,6 +9,8 @@ from app.services.pdf_loader import load_and_index_pdfs as load_pdfs
 import json
 import os
 from fastapi import UploadFile, File
+import shutil
+
 
 router = APIRouter()
 
